@@ -2,6 +2,7 @@
  * Copyright (C) 2016-2017 Lightbend Inc. <http://www.lightbend.com/>
  */
 package akka.typed
+package internal
 package adapter
 
 import akka.{ actor ⇒ a, dispatch ⇒ d }
@@ -9,19 +10,21 @@ import akka.dispatch.sysmsg
 import scala.concurrent.ExecutionContextExecutor
 import akka.util.Timeout
 import scala.concurrent.Future
+import akka.annotation.InternalApi
 
 /**
- * Lightweight wrapper for presenting an untyped ActorSystem to a Behavior (via the context).
+ * INTERNAL API. Lightweight wrapper for presenting an untyped ActorSystem to a Behavior (via the context).
  * Therefore it does not have a lot of vals, only the whenTerminated Future is cached after
  * its transformation because redoing that every time will add extra objects that persist for
  * a longer time; in all other cases the wrapper will just be spawned for a single call in
  * most circumstances.
  */
-private[typed] class ActorSystemAdapter[-T](val untyped: a.ActorSystemImpl)
+@InternalApi private[typed] class ActorSystemAdapter[-T](val untyped: a.ActorSystemImpl)
   extends ActorRef[T](a.RootActorPath(a.Address("akka", untyped.name)) / "user")
   with ActorSystem[T] with internal.ActorRefImpl[T] {
 
   import ActorSystemAdapter._
+  import ActorRefAdapter.sendSystemMessage
 
   // Members declared in akka.typed.ActorRef
   override def tell(msg: T): Unit = untyped.guardian ! msg
@@ -65,8 +68,8 @@ private[typed] class ActorSystemAdapter[-T](val untyped: a.ActorSystemImpl)
     untyped.whenTerminated.map(t ⇒ Terminated(ActorRefAdapter(t.actor))(null))(sameThreadExecutionContext)
 
   def systemActorOf[U](behavior: Behavior[U], name: String, deployment: DeploymentConfig)(implicit timeout: Timeout): Future[ActorRef[U]] = {
-    val ref = untyped.systemActorOf(PropsAdapter(behavior, deployment), name)
-    Future.successful(ref)
+    val ref = untyped.systemActorOf(PropsAdapter(() ⇒ behavior, deployment), name)
+    Future.successful(ActorRefAdapter(ref))
   }
 
 }
@@ -74,9 +77,24 @@ private[typed] class ActorSystemAdapter[-T](val untyped: a.ActorSystemImpl)
 private[typed] object ActorSystemAdapter {
   def apply(untyped: a.ActorSystem): ActorSystem[Nothing] = new ActorSystemAdapter(untyped.asInstanceOf[a.ActorSystemImpl])
 
-  object ReceptionistExtension extends a.ExtensionKey[ReceptionistExtension]
+  def toUntyped[U](sys: ActorSystem[_]): a.ActorSystem =
+    sys match {
+      case adapter: ActorSystemAdapter[_] ⇒ adapter.untyped
+      case _ ⇒ throw new UnsupportedOperationException("only adapted untyped ActorSystem permissible " +
+        s"($sys of class ${sys.getClass.getName})")
+    }
+
+  object ReceptionistExtension extends a.ExtensionId[ReceptionistExtension] with a.ExtensionIdProvider {
+    override def get(system: a.ActorSystem): ReceptionistExtension = super.get(system)
+    override def lookup = ReceptionistExtension
+    override def createExtension(system: a.ExtendedActorSystem): ReceptionistExtension =
+      new ReceptionistExtension(system)
+  }
+
   class ReceptionistExtension(system: a.ExtendedActorSystem) extends a.Extension {
     val receptionist: ActorRef[patterns.Receptionist.Command] =
-      ActorRefAdapter(system.systemActorOf(PropsAdapter(patterns.Receptionist.behavior, EmptyDeploymentConfig), "receptionist"))
+      ActorRefAdapter(system.systemActorOf(
+        PropsAdapter(() ⇒ patterns.Receptionist.behavior, EmptyDeploymentConfig),
+        "receptionist"))
   }
 }

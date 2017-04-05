@@ -2,11 +2,16 @@
  * Copyright (C) 2016-2017 Lightbend Inc. <http://www.lightbend.com/>
  */
 package akka.typed
+package internal
 package adapter
 
 import akka.{ event ⇒ e }
+import akka.annotation.InternalApi
 
-class EventStreamAdapter(untyped: e.EventStream) extends EventStream {
+/**
+ * INTERNAL API
+ */
+@InternalApi private[typed] class EventStreamAdapter(untyped: e.EventStream) extends EventStream {
   def logLevel: e.Logging.LogLevel = untyped.logLevel
 
   def publish[T](event: T): Unit = untyped.publish(event.asInstanceOf[AnyRef])
