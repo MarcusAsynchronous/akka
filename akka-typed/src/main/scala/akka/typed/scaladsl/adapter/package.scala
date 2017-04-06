@@ -20,8 +20,12 @@ import akka.typed.internal.adapter._
  * from untyped parent actor, and the opposite untyped child from typed parent.
  * `watch` is also supported in both directions.
  *
- * There is also an implicit conversion from untyped [[akka.actor.ActorRef]] to
+ * There is an implicit conversion from untyped [[akka.actor.ActorRef]] to
  * typed [[akka.typed.ActorRef]].
+ *
+ * There are also converters (`toTyped`, `toUntyped`) from typed
+ * [[akka.typed.ActorRef]] to untyped [[akka.actor.ActorRef]], and between untyped
+ * [[akka.actor.ActorSystem]] and typed [[akka.typed.ActorSystem]].
  */
 package object adapter {
 
@@ -36,14 +40,14 @@ package object adapter {
     def spawn[T](behavior: Behavior[T], name: String, deployment: DeploymentConfig = EmptyDeploymentConfig): ActorRef[T] =
       ActorRefAdapter(sys.actorOf(PropsAdapter(Behavior.validateAsInitial(behavior), deployment), name))
 
-    def typed: ActorSystem[Nothing] = ActorSystemAdapter(sys)
+    def toTyped: ActorSystem[Nothing] = ActorSystemAdapter(sys)
   }
 
   /**
    * Extension methods added to [[akka.typed.ActorSystem]].
    */
   implicit class TypedActorSystemOps(val sys: ActorSystem[_]) extends AnyVal {
-    def untyped: akka.actor.ActorSystem = ActorSystemAdapter.toUntyped(sys)
+    def toUntyped: akka.actor.ActorSystem = ActorSystemAdapter.toUntyped(sys)
   }
 
   /**
@@ -78,12 +82,12 @@ package object adapter {
    * Extension methods added to [[akka.typed.ActorRef]].
    */
   implicit class TypedActorRefOps(val ref: ActorRef[_]) extends AnyVal {
-    def untyped: akka.actor.ActorRef = ActorRefAdapter.toUntyped(ref)
+    def toUntyped: akka.actor.ActorRef = ActorRefAdapter.toUntyped(ref)
   }
 
   /**
    * Implicit conversion from untyped [[akka.actor.ActorRef]] to typed [[akka.typed.ActorRef]].
    */
-  implicit def actorRefAdapter(ref: akka.actor.ActorRef): ActorRef[Any] = ActorRefAdapter(ref)
+  implicit def actorRefAdapter[T](ref: akka.actor.ActorRef): ActorRef[T] = ActorRefAdapter(ref)
 
 }

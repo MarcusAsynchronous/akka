@@ -32,7 +32,7 @@ object AdapterSpec {
       onMessage = (ctx, msg) ⇒
       msg match {
         case "send" ⇒
-          val replyTo = ctx.self.untyped
+          val replyTo = ctx.self.toUntyped
           ref.tell("ping", replyTo)
           Same
         case "pong" ⇒
@@ -40,7 +40,7 @@ object AdapterSpec {
           Same
         case "actorOf" ⇒
           val child = ctx.actorOf(untyped1)
-          child.tell("ping", ctx.self.untyped)
+          child.tell("ping", ctx.self.toUntyped)
           Same
         case "watch" ⇒
           ctx.watch(ref)
@@ -49,7 +49,7 @@ object AdapterSpec {
           val child = ctx.actorOf(untyped1)
           ctx.watch(child)
           child ! ThrowIt3
-          child.tell("ping", ctx.self.untyped)
+          child.tell("ping", ctx.self.toUntyped)
           Same
         case "stop-child" ⇒
           val child = ctx.actorOf(untyped1)
@@ -136,7 +136,6 @@ object AdapterSpec {
           Stopped
         case t: ThrowIt ⇒
           throw t
-          Same
       }
     }
 
@@ -149,7 +148,7 @@ class AdapterSpec extends AkkaSpec {
 
   "Adapted actors" must {
 
-    implicit val typedSystem = system.typed
+    implicit val typedSystem = system.toTyped
 
     "send message from typed to untyped" in {
       val probe = TestProbe()
@@ -218,6 +217,10 @@ class AdapterSpec extends AkkaSpec {
       probe.expectMsg("thrown-stop")
       // ping => ok should not get through here
       probe.expectMsg("terminated")
+
+      untypedRef ! "supervise-resume"
+      probe.expectMsg("thrown-resume")
+      probe.expectMsg("ok")
 
       untypedRef ! "supervise-restart"
       probe.expectMsg("thrown-restart")

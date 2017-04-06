@@ -21,19 +21,22 @@ import akka.annotation.InternalApi
   def subscribe[T](subscriber: ActorRef[T], to: Class[T]): Boolean =
     subscriber match {
       case adapter: ActorRefAdapter[_] ⇒ untyped.subscribe(adapter.untyped, to)
-      case _                           ⇒ throw new UnsupportedOperationException("cannot subscribe native typed ActorRef")
+      case _ ⇒
+        throw new UnsupportedOperationException("Cannot subscribe native typed ActorRef")
     }
 
   def unsubscribe[T](subscriber: ActorRef[T]): Unit =
     subscriber match {
       case adapter: ActorRefAdapter[_] ⇒ untyped.unsubscribe(adapter.untyped)
-      case _                           ⇒ throw new UnsupportedOperationException("cannot unsubscribe native typed ActorRef")
+      case _ ⇒
+        throw new UnsupportedOperationException("Cannot unsubscribe native typed ActorRef")
     }
 
   def unsubscribe[T](subscriber: ActorRef[T], from: Class[T]): Boolean =
     subscriber match {
       case adapter: ActorRefAdapter[_] ⇒ untyped.unsubscribe(adapter.untyped, from)
-      case _                           ⇒ throw new UnsupportedOperationException("cannot unsubscribe native typed ActorRef")
+      case _ ⇒
+        throw new UnsupportedOperationException("Cannot unsubscribe native typed ActorRef")
     }
 
 }

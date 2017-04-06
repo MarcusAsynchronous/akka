@@ -85,6 +85,14 @@ import akka.annotation.InternalApi
           s"($ctx of class ${ctx.getClass.getName})")
     }
 
+  def toUntyped[U](ctx: javadsl.ActorContext[_]): a.ActorContext =
+    ctx match {
+      case c: ActorContext[_] ⇒ toUntyped(c)
+      case _ ⇒
+        throw new UnsupportedOperationException("unknown ActorContext type " +
+          s"($ctx of class ${ctx.getClass.getName})")
+    }
+
   def spawnAnonymous[T](ctx: akka.actor.ActorContext, behavior: Behavior[T], deployment: DeploymentConfig): ActorRef[T] = {
     Behavior.validateAsInitial(behavior)
     ActorRefAdapter(ctx.actorOf(PropsAdapter(() ⇒ behavior, deployment)))
